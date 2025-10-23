@@ -208,12 +208,12 @@ const productSchema = new mongoose.Schema({
   }],
   created_by: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vendor', // ✅ CHANGED: Admin → Vendor
+    ref: 'Vendor',
     required: true
   },
   updated_by: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vendor' // ✅ CHANGED: Admin → Vendor
+    ref: 'Vendor'
   }
 }, {
   timestamps: true
@@ -223,36 +223,73 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ category_id: 1, subcategory_id: 1 });
 productSchema.index({ product_name: 'text', tags: 'text' });
 
-// Auto-generate slug and SKU
+// ✅ FIXED: Generate unique slug and SKU
 productSchema.pre('save', async function(next) {
-  if (this.isModified('product_name')) {
-    this.product_slug = this.product_name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
+  try {
+    // Generate slug from product name
+    if (this.isModified('product_name')) {
+      let baseSlug = this.product_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      // Make slug unique by appending timestamp if needed
+      let slug = baseSlug;
+      let counter = 1;
+      
+      while (await mongoose.model('Product').findOne({ product_slug: slug, _id: { $ne: this._id } })) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+      
+      this.product_slug = slug;
+    }
+    
+    // ✅ Generate UNIQUE SKU if not exists
+    if (!this.sku && this.isNew) {
+      const Category = mongoose.model('Category');
+      const Subcategory = mongoose.model('Subcategory');
+      
+      const category = await Category.findById(this.category_id);
+      const subcategory = this.subcategory_id ? await Subcategory.findById(this.subcategory_id) : null;
+      
+      const catCode = category ? category.category_name.substring(0, 3).toUpperCase() : 'PRD';
+      const subCode = subcategory ? subcategory.subcategory_name.substring(0, 3).toUpperCase() : 'GEN';
+      
+      // ✅ FIX: Use vendor-specific count to ensure uniqueness
+      const vendorId = this.created_by;
+      
+      // Get the total count of products by this vendor in this category/subcategory
+      const count = await this.constructor.countDocuments({
+        category_id: this.category_id,
+        subcategory_id: this.subcategory_id,
+        created_by: vendorId
+      });
+      
+      // ✅ Add timestamp component for extra uniqueness
+      const timestamp = Date.now().toString().slice(-4);
+      
+      // Generate initial SKU
+      let sku = `${catCode}-${subCode}-V${vendorId.toString().slice(-3)}-${String(count + 1).padStart(3, '0')}-${timestamp}`;
+      
+      // ✅ Ensure SKU is truly unique (handle race conditions)
+      let skuExists = await this.constructor.findOne({ sku });
+      let attempt = 0;
+      
+      while (skuExists && attempt < 10) {
+        attempt++;
+        const randomSuffix = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+        sku = `${catCode}-${subCode}-V${vendorId.toString().slice(-3)}-${String(count + attempt).padStart(3, '0')}-${randomSuffix}`;
+        skuExists = await this.constructor.findOne({ sku });
+      }
+      
+      this.sku = sku;
+    }
+    
+    next();
+  } catch (error) {
+    next(error);
   }
-  
-  // Generate SKU if not exists
-  if (!this.sku && this.isNew) {
-    const Category = mongoose.model('Category');
-    const Subcategory = mongoose.model('Subcategory');
-    
-    const category = await Category.findById(this.category_id);
-    const subcategory = this.subcategory_id ? await Subcategory.findById(this.subcategory_id) : null;
-    
-    const catCode = category ? category.category_name.substring(0, 3).toUpperCase() : 'PRD';
-    const subCode = subcategory ? subcategory.subcategory_name.substring(0, 3).toUpperCase() : 'GEN';
-    
-    // Get count for sequence
-    const count = await this.constructor.countDocuments({
-      category_id: this.category_id,
-      subcategory_id: this.subcategory_id
-    });
-    
-    this.sku = `${catCode}-${subCode}-${String(count + 1).padStart(3, '0')}`;
-  }
-  
-  next();
 });
 
 // Virtual to populate variants
