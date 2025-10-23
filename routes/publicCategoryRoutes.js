@@ -158,6 +158,122 @@ router.get('/subcategories', async (req, res) => {
 
 // ============= PRODUCTS =============
 
+
+router.get('/subcategories/:subcategoryId/products', async (req, res) => {
+  try {
+    const { subcategoryId } = req.params;
+    const { 
+      page = 1, 
+      limit = 20,
+      sort_by = 'createdAt',
+      sort_order = 'desc',
+      min_price,
+      max_price,
+      search
+    } = req.query;
+
+    // Build query - only active products from this subcategory
+    const query = { 
+      subcategory_id: subcategoryId,
+      is_active: true 
+    };
+
+    // Optional search filter
+    if (search) {
+      query.product_name = { $regex: search, $options: 'i' };
+    }
+
+    // Sorting
+    const sortOptions = {};
+    sortOptions[sort_by] = sort_order === 'desc' ? -1 : 1;
+
+    // Pagination
+    const skip = (page - 1) * limit;
+
+    // Fetch products
+    const products = await Product.find(query)
+      .populate('category_id', 'category_name category_slug')
+      .populate('subcategory_id', 'subcategory_name subcategory_slug')
+      .populate('created_by', 'name email phone')
+      .select('-__v')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Get variants and images for each product
+    const productsWithDetails = await Promise.all(
+      products.map(async (product) => {
+        // Get variants
+        const variants = await ProductVariant.find({ 
+          product_id: product._id,
+          is_active: true 
+        }).select('-__v').lean();
+
+        // Get images
+        const images = await ProductImage.find({ product_id: product._id })
+          .sort({ display_order: 1 })
+          .select('image_url image_alt_text is_primary display_order')
+          .lean();
+
+        // Calculate price range
+        const prices = variants.map(v => v.selling_price);
+        const minVariantPrice = variants.length > 0 ? Math.min(...prices) : 0;
+        const maxVariantPrice = variants.length > 0 ? Math.max(...prices) : 0;
+
+        return {
+          ...product,
+          variants,
+          images,
+          primary_image: images.find(img => img.is_primary)?.image_url || images[0]?.image_url,
+          min_price: minVariantPrice,
+          max_price: maxVariantPrice,
+          in_stock: variants.some(v => v.stock_quantity > 0)
+        };
+      })
+    );
+
+    // Apply price filter if needed
+    let filteredProducts = productsWithDetails;
+    if (min_price || max_price) {
+      filteredProducts = productsWithDetails.filter(product => {
+        const minCheck = min_price ? product.min_price >= parseFloat(min_price) : true;
+        const maxCheck = max_price ? product.max_price <= parseFloat(max_price) : true;
+        return minCheck && maxCheck;
+      });
+    }
+
+    // Get total count
+    const totalProducts = await Product.countDocuments(query);
+
+    // Get subcategory info
+    const subcategory = await Subcategory.findById(subcategoryId)
+      .populate('parent_category_id', 'category_name category_slug')
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        subcategory,
+        products: filteredProducts,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalProducts / limit),
+          totalProducts,
+          productsPerPage: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get subcategory products error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch products for this subcategory',
+      error: error.message
+    });
+  }
+});
+
 // GET ALL PRODUCTS (with filters)
 router.get('/products', async (req, res) => {
   try {
