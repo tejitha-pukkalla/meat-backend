@@ -18,5 +18,6 @@ router.get('/addresses', profileController.getAddresses);
 router.put('/address/:addressId', profileController.updateAddress);
 router.delete('/address/:addressId', profileController.deleteAddress);
 router.patch('/address/:addressId/set-default', profileController.setDefaultAddress);
- 
+
+
 module.exports = router;

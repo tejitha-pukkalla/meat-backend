@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
- 
+
 const userProfileSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    unique: true,
+  },
+  phone: {
+    type: String,
+    required: true,
+    match: /^[0-9]{10}$/,
     unique: true,
   },
   name: {
@@ -72,11 +78,11 @@ const userProfileSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
- 
+
 // Update timestamp on save
 userProfileSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
- 
+
 module.exports = mongoose.model('UserProfile', userProfileSchema);

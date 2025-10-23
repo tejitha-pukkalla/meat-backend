@@ -1,12 +1,14 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  phone: {
-    type: String,
-    required: true,
-    unique: true,
-    match: /^[0-9]{10}$/,
-  },
+// User model
+phone: {
+  type: String,
+  required: true,
+  unique: true,
+  match: /^[0-9]{10}$/,
+},
+
 otp: { type: String, required: true },
   isPhoneVerified: {
     type: Boolean,

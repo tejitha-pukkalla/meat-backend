@@ -49,5 +49,4 @@ router.put('/vendors/:id/approve-documents', verifyToken, checkSuperAdmin, appro
 router.put('/vendors/:id/verify-banking', verifyToken, checkSuperAdmin, verifyVendorBanking);
 
 
-
 module.exports = router;

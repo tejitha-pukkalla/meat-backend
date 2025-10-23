@@ -96,7 +96,6 @@ router.get('/categories', async (req, res) => {
     const categories = await Category.find({ is_active: true })
       .select('_id category_name category_slug category_image display_order')
       .sort({ display_order: 1, category_name: 1 });
-
     res.status(200).json({
       success: true,
       data: categories
@@ -137,14 +136,12 @@ router.get('/subcategories/:categoryId', async (req, res) => {
     });
   }
 });
-
 router.get('/subcategories', async (req, res) => {
   try {
     const subcategories = await Subcategory.find({ is_active: true })
       .populate('parent_category_id', 'category_name')
       .select('_id subcategory_name subcategory_slug parent_category_id display_order')
       .sort({ display_order: 1, subcategory_name: 1 });
-
     res.status(200).json({
       success: true,
       data: subcategories
@@ -188,17 +185,14 @@ router.get('/products', async (req, res) => {
     if (category_id) {
       query.category_id = category_id;
     }
-
     // Filter by subcategory
     if (subcategory_id) {
       query.subcategory_id = subcategory_id;
     }
-
     // Search by product name
     if (search) {
       query.product_name = { $regex: search, $options: 'i' };
     }
-
     // Filter by flags
     if (is_featured === 'true') {
       query.is_featured = true;
@@ -227,7 +221,6 @@ router.get('/products', async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
-
     // Get variants and images for each product
     const productsWithDetails = await Promise.all(
       products.map(async (product) => {
@@ -242,12 +235,10 @@ router.get('/products', async (req, res) => {
           .sort({ display_order: 1 })
           .select('image_url image_alt_text is_primary display_order')
           .lean();
-
         // Calculate price range
         const prices = variants.map(v => v.selling_price);
         const minVariantPrice = variants.length > 0 ? Math.min(...prices) : 0;
         const maxVariantPrice = variants.length > 0 ? Math.max(...prices) : 0;
-
         return {
           ...product,
           variants,
@@ -259,7 +250,6 @@ router.get('/products', async (req, res) => {
         };
       })
     );
-
     // Apply price filter if needed
     let filteredProducts = productsWithDetails;
     if (min_price || max_price) {
@@ -285,7 +275,6 @@ router.get('/products', async (req, res) => {
         }
       }
     });
-
   } catch (error) {
     console.error('Get products error:', error);
     res.status(500).json({
@@ -295,7 +284,6 @@ router.get('/products', async (req, res) => {
     });
   }
 });
-
 // GET SINGLE PRODUCT BY ID (detailed view)
 router.get('/products/:id', async (req, res) => {
   try {
@@ -309,7 +297,6 @@ router.get('/products/:id', async (req, res) => {
       .populate('subcategory_id', 'subcategory_name subcategory_slug')
       .populate('created_by', 'name email phone address city state pincode fssaiLicense')
       .lean();
-
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -327,12 +314,10 @@ router.get('/products/:id', async (req, res) => {
     const images = await ProductImage.find({ product_id: id })
       .sort({ display_order: 1 })
       .lean();
-
     // Get nutrition info
     const nutrition = await ProductNutrition.findOne({ product_id: id })
       .select('-_id -product_id -__v')
       .lean();
-
     // Build complete product object
     const completeProduct = {
       ...product,
@@ -344,12 +329,10 @@ router.get('/products/:id', async (req, res) => {
       max_price: variants.length > 0 ? Math.max(...variants.map(v => v.selling_price)) : 0,
       in_stock: variants.some(v => v.stock_quantity > 0)
     };
-
     res.status(200).json({
       success: true,
       data: completeProduct
     });
-
   } catch (error) {
     console.error('Get product error:', error);
     res.status(500).json({
@@ -397,12 +380,10 @@ router.get('/products/featured/all', async (req, res) => {
         };
       })
     );
-
     res.status(200).json({
       success: true,
       data: productsWithDetails
     });
-
   } catch (error) {
     console.error('Get featured products error:', error);
     res.status(500).json({
@@ -449,12 +430,10 @@ router.get('/products/bestseller/all', async (req, res) => {
         };
       })
     );
-
     res.status(200).json({
       success: true,
       data: productsWithDetails
     });
-
   } catch (error) {
     console.error('Get bestseller products error:', error);
     res.status(500).json({
@@ -501,12 +480,10 @@ router.get('/products/new-arrivals/all', async (req, res) => {
         };
       })
     );
-
     res.status(200).json({
       success: true,
       data: productsWithDetails
     });
-
   } catch (error) {
     console.error('Get new arrival products error:', error);
     res.status(500).json({
@@ -516,7 +493,6 @@ router.get('/products/new-arrivals/all', async (req, res) => {
     });
   }
 });
-
 // GET PRODUCTS BY VENDOR (Vendor Store Page)
 router.get('/vendors/:vendorId/products', async (req, res) => {
   try {
@@ -570,7 +546,6 @@ router.get('/vendors/:vendorId/products', async (req, res) => {
     const vendor = await Vendor.findById(vendorId)
       .select('name email phone address city state pincode fssaiLicense')
       .lean();
-
     res.status(200).json({
       success: true,
       data: {
@@ -584,7 +559,6 @@ router.get('/vendors/:vendorId/products', async (req, res) => {
         }
       }
     });
-
   } catch (error) {
     console.error('Get vendor products error:', error);
     res.status(500).json({
