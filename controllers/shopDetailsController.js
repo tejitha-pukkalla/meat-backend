@@ -2,40 +2,6 @@ const Vendor = require('../models/Vendor');
 const VendorProfile = require('../models/VendorProfile');
 const { calculateProfileCompletion } = require('../utils/profileHelper');
 
-// @desc    Get Shop Details
-// @route   GET /api/vendor/shop-details
-// @access  Private (Vendor only)
-// exports.getShopDetails = async (req, res) => {
-//   try {
-//     const vendorId = req.user.id;
-
-//     const vendor = await Vendor.findById(vendorId).select(
-//       'name address city state pincode landmark googleMapsLocation ' +
-//       'openingTime closingTime workingDays weeklyOff alternatePhone ' +
-//       'businessType businessDescription specialization logo shopPhotos coverImage ' +
-//       'deliveryAvailable deliveryRadius deliveryCharges minimumOrderValue ' +
-//       'halalCertified jhatkaAvailable coldStorageAvailable customCuttingService marinationService'
-//     );
-
-//     const vendorProfile = await VendorProfile.findOne({ vendorId });
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         vendor,
-//         location: vendorProfile?.shopLocation || null
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error('Get Shop Details Error:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Error fetching shop details',
-//       error: error.message
-//     });
-//   }
-// };
 exports.getShopDetails = async (req, res) => {
   try {
     const vendorId = req.user.id;
@@ -173,73 +139,6 @@ exports.updateShopDetails = async (req, res) => {
     });
   }
 };
-
-// @desc    Update Shop Location (from Map)
-// @route   POST /api/vendor/shop-details/location
-// @access  Private (Vendor only)
-// exports.updateShopLocation = async (req, res) => {
-//   try {
-//     const vendorId = req.user.id;
-//     const { latitude, longitude, fullAddress } = req.body;
-
-//     // Validation
-//     if (!latitude || !longitude) {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Latitude and longitude are required'
-//       });
-//     }
-
-//     if (latitude < -90 || latitude > 90) {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Invalid latitude value'
-//       });
-//     }
-
-//     if (longitude < -180 || longitude > 180) {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Invalid longitude value'
-//       });
-//     }
-
-//     // Find or create vendor profile
-//     let vendorProfile = await VendorProfile.findOne({ vendorId });
-    
-//     if (!vendorProfile) {
-//       vendorProfile = new VendorProfile({ vendorId });
-//     }
-
-//     // Update location
-//     vendorProfile.shopLocation = {
-//       latitude: parseFloat(latitude),
-//       longitude: parseFloat(longitude),
-//       fullAddress: fullAddress || ''
-//     };
-
-//     await vendorProfile.save();
-
-//     // Recalculate completion
-//     await calculateProfileCompletion(vendorId);
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Shop location updated successfully',
-//       data: {
-//         location: vendorProfile.shopLocation
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error('Update Location Error:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Error updating location',
-//       error: error.message
-//     });
-//   }
-// };
 
 exports.updateShopLocation = async (req, res) => {
   try {
